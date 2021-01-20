@@ -270,7 +270,7 @@ class Manual(QMainWindow):
                 A = file.readlines()[0].split('/')
                 self.videoMsg.setText('Name of video : ' + A[-1][0:-2])
                 self.videoName = A[-1][0:-6]
-            file = open("./processing/"+ self.videoName +".result","w",encoding='utf-8')
+            file = open("./processing/"+ self.videoName +".result","w")
             file.writelines("0:car,0")
             self.myThread = thread_try(self)
             self.myThread.start()

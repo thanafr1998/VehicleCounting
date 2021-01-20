@@ -21,12 +21,31 @@ from ObjectCounter import ObjectCounter
 init_logger()
 logger = get_logger()
 
+def write_result(array, name):
+    '''
+    Write result to read in app.
+    '''
+    file_result = open("./processing/"+name +".result","w")
+    file_result.writelines(array)
+
+def read_check(name):
+    '''
+    Check if the video should end or not
+    '''
+    file_check = open("./processing/"+name + ".check","r")
+    return file_check.readline()
+
+def write_check(name, end):
+    '''
+    Write .check
+    '''
+    file_check = open("./processing/"+name +".check","w")
+    file_check.write("False," + end)
 
 def run():
     '''
     Initialize object counter class and run counting loop.
     '''
-
     video = settings.VIDEO
     cap = cv2.VideoCapture(video)
     if not cap.isOpened():
@@ -86,6 +105,9 @@ def run():
 
     is_paused = False
     output_frame = None
+    restart = False
+    time_start = time.time()
+    old_time = 0
 
     try:
         # main loop
@@ -99,12 +121,40 @@ def run():
             if k == ord('q'): # end video loop if 'q' key is pressed
                 logger.info('Loop stopped.', extra={'meta': {'label': 'STOP_LOOP'}})
                 break
+            if k == ord('r'): # restart video loop if 'r' is pressed
+                logger.info('Restart video.')
+                restart = True
+                break
 
             if is_paused:
                 time.sleep(0.5)
                 continue
 
+            videoName = video.split('/')
+            if(old_time == 0):
+                write_check(videoName[-1][0:-4], 'False')
+            p, q =read_check(videoName[-1][0:-4]).split(',')
+            if p == "True":
+                time.sleep(0.5)
+                continue
+            if q == "True":
+                logger.info('Loop stopped.', extra={'meta': {'label': 'STOP_LOOP'}})
+                break
+
             _timer = cv2.getTickCount() # set timer to calculate processing frame rate
+
+            fps = cap.get(cv2.CAP_PROP_FPS)
+            frame_now = round(cap.get(cv2.CAP_PROP_POS_FRAMES))
+            time_now = frame_now/fps
+
+            if(old_time != time_now):
+                old_time = time_now
+                if(old_time <= 900):
+                    array = [str(old_time)]
+                for line, objects in object_counter.counts.items():
+                    for label, count in objects.items():
+                        array.append(':' + str(label) + ',' + str(count))
+                write_result(array, videoName[-1][0:-4])
 
             if ret:
                 object_counter.count(frame)
@@ -145,7 +195,8 @@ def run():
                 'counts': object_counter.get_counts(),
             },
         })
-
+        write_check(videoName[-1][0:-4],'True')
+        if restart == True: run()
 
 if __name__ == '__main__':
     run()
